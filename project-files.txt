@@ -1,0 +1,1063 @@
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\config\SecurityConfig.java
+=============================================================
+package com.example.employee_management_system.config;
+
+import com.example.employee_management_system.security.JwtFilter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+
+@Configuration
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final JwtFilter jwtFilter;
+
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration configuration) throws Exception {
+
+        return configuration.getAuthenticationManager();
+    }
+
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
+        http
+
+                // Disable CSRF for REST APIs
+                .csrf(csrf -> csrf.disable())
+
+
+                // JWT authentication is stateless
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
+
+
+                .authorizeHttpRequests(auth -> auth
+
+
+                        // Public APIs
+                        .requestMatchers("/auth/**")
+                        .permitAll()
+
+
+                        // ADMIN and HR can create employees
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/employees"
+                        )
+                        .hasAnyRole("ADMIN", "HR")
+
+
+                        // ADMIN and HR can update employees
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/employees/**"
+                        )
+                        .hasAnyRole("ADMIN", "HR")
+
+
+                        // Only ADMIN can delete employees
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/employees/**"
+                        )
+                        .hasRole("ADMIN")
+
+
+                        // ADMIN and HR can view employees (ALL + BY ID)
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/employees/**"
+                        )
+                        .hasAnyRole("ADMIN", "HR")
+
+
+                        // Employee profile access
+                        .requestMatchers(
+                                "/api/employee/profile/**"
+                        )
+                        .hasRole("EMPLOYEE")
+
+
+                        // Any other request needs authentication
+                        .anyRequest()
+                        .authenticated()
+
+                )
+
+
+                // Add JWT filter before Spring Security authentication filter
+                .addFilterBefore(
+                        jwtFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
+
+
+        return http.build();
+    }
+}
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\security\JwtFilter.java
+=============================================================
+package com.example.employee_management_system.security;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+
+@Component
+public class JwtFilter extends OncePerRequestFilter {
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private CustomUserDetailsService userDetailsService;
+
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain)
+            throws ServletException, IOException {
+
+        System.out.println("\n================ JWT FILTER ================");
+        System.out.println("Request URI : " + request.getRequestURI());
+
+        String path = request.getServletPath();
+
+        // Skip authentication for login/register
+        if (path.equals("/auth/login") || path.equals("/auth/register")) {
+            System.out.println("Skipping JWT for: " + path);
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String authHeader = request.getHeader("Authorization");
+        System.out.println("Authorization Header: " + authHeader);
+
+        String token = null;
+        String username = null;
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+
+            token = authHeader.substring(7);
+
+            System.out.println("JWT Token: " + token);
+
+            if (jwtUtil.validateToken(token)) {
+
+                System.out.println("Token is VALID");
+
+                username = jwtUtil.extractUsername(token);
+
+                System.out.println("Username from Token: " + username);
+
+            } else {
+
+                System.out.println("Token is INVALID");
+            }
+
+        } else {
+
+            System.out.println("Authorization header missing or invalid.");
+        }
+
+        if (username != null &&
+                SecurityContextHolder.getContext().getAuthentication() == null) {
+
+            UserDetails userDetails =
+                    userDetailsService.loadUserByUsername(username);
+
+            System.out.println("User Loaded: " + userDetails.getUsername());
+            System.out.println("Authorities: " + userDetails.getAuthorities());
+
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities());
+
+            authentication.setDetails(
+                    new WebAuthenticationDetailsSource()
+                            .buildDetails(request));
+
+            SecurityContextHolder.getContext()
+                    .setAuthentication(authentication);
+
+            System.out.println("Authentication SUCCESS");
+        } else {
+
+            System.out.println("Authentication NOT set.");
+        }
+
+        System.out.println("============================================\n");
+
+        filterChain.doFilter(request, response);
+    }
+}
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\security\JwtUtil.java
+=============================================================
+package com.example.employee_management_system.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+
+@Component
+public class JwtUtil {
+
+    private static final String SECRET =
+            "employee_management_system_secret_key_2026_employee_management";
+
+    private final SecretKey key =
+            Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+
+    private static final long EXPIRATION =
+            1000 * 60 * 60 * 24; // 24 Hours
+
+    public String generateToken(String username) {
+
+        return Jwts.builder()
+                .subject(username)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + EXPIRATION))
+                .signWith(key)
+                .compact();
+    }
+
+    public String extractUsername(String token) {
+
+        Claims claims = Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        return claims.getSubject();
+    }
+
+    public boolean validateToken(String token) {
+
+        try {
+
+            Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token);
+
+            return true;
+
+        } catch (SignatureException e) {
+
+            return false;
+
+        } catch (Exception e) {
+
+            return false;
+        }
+    }
+}
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\security\CustomUserDetailsService.java
+=============================================================
+package com.example.employee_management_system.security;
+
+import com.example.employee_management_system.entity.User;
+import com.example.employee_management_system.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.*;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class CustomUserDetailsService implements UserDetailsService {
+
+
+    @Autowired
+    private UserRepository userRepository;
+
+
+    @Override
+    public UserDetails loadUserByUsername(String username)
+            throws UsernameNotFoundException {
+
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() ->
+                        new UsernameNotFoundException("User not found"));
+
+
+        return new org.springframework.security.core.userdetails.User(
+                user.getUsername(),
+                user.getPassword(),
+
+                List.of(
+                    new SimpleGrantedAuthority(
+                        "ROLE_" + user.getRole().getName()
+                    )
+                )
+        );
+    }
+}
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\controller\AuthController.java
+=============================================================
+package com.example.employee_management_system.controller;
+
+import com.example.employee_management_system.dto.AuthResponse;
+import com.example.employee_management_system.dto.LoginRequest;
+import com.example.employee_management_system.dto.RegisterRequest;
+import com.example.employee_management_system.service.AuthService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/auth")
+@CrossOrigin("*")
+public class AuthController {
+
+    @Autowired
+    private AuthService authService;
+
+
+    @PostMapping("/register")
+    public String register(@RequestBody RegisterRequest request) {
+        return authService.register(request);
+    }
+
+
+    @PostMapping("/login")
+    public AuthResponse login(@RequestBody LoginRequest request) {
+
+        System.out.println("========== LOGIN API CALLED ==========");
+        System.out.println("USERNAME : " + request.getUsername());
+        System.out.println("PASSWORD : " + request.getPassword());
+
+        return authService.login(request);
+    }
+}
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\controller\EmployeeController.java
+=============================================================
+package com.example.employee_management_system.controller;
+
+import com.example.employee_management_system.dto.EmployeeDTO;
+import com.example.employee_management_system.service.EmployeeService;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.validation.Valid;
+
+import java.util.List;
+
+
+@RestController
+@RequestMapping("/api/employees")
+public class EmployeeController {
+
+
+    @Autowired
+    private EmployeeService employeeService;
+
+
+
+    // CREATE EMPLOYEE
+    @PostMapping
+    public ResponseEntity<EmployeeDTO> createEmployee(
+            @Valid @RequestBody EmployeeDTO employeeDTO) {
+
+
+        EmployeeDTO savedEmployee =
+                employeeService.createEmployee(employeeDTO);
+
+
+        return new ResponseEntity<>(
+                savedEmployee,
+                HttpStatus.CREATED
+        );
+    }
+
+
+
+
+    // GET ALL EMPLOYEES
+    @GetMapping
+    public ResponseEntity<List<EmployeeDTO>> getAllEmployees() {
+
+
+        return ResponseEntity.ok(
+                employeeService.getAllEmployees()
+        );
+    }
+
+
+
+
+    // GET EMPLOYEE BY ID
+    @GetMapping("/{id}")
+    public ResponseEntity<EmployeeDTO> getEmployeeById(
+            @PathVariable Long id) {
+
+
+        return ResponseEntity.ok(
+                employeeService.getEmployeeById(id)
+        );
+    }
+
+
+
+
+    // UPDATE EMPLOYEE
+    @PutMapping("/{id}")
+    public ResponseEntity<EmployeeDTO> updateEmployee(
+            @PathVariable Long id,
+            @Valid @RequestBody EmployeeDTO employeeDTO) {
+
+
+        return ResponseEntity.ok(
+                employeeService.updateEmployee(id, employeeDTO)
+        );
+    }
+
+
+
+
+    // DELETE EMPLOYEE
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteEmployee(
+            @PathVariable Long id) {
+
+
+        employeeService.deleteEmployee(id);
+
+
+        return ResponseEntity.ok(
+                "Employee deleted successfully"
+        );
+    }
+
+}
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\service\AuthService.java
+=============================================================
+package com.example.employee_management_system.service;
+
+import com.example.employee_management_system.dto.AuthResponse;
+import com.example.employee_management_system.dto.LoginRequest;
+import com.example.employee_management_system.dto.RegisterRequest;
+import com.example.employee_management_system.entity.Role;
+import com.example.employee_management_system.entity.User;
+import com.example.employee_management_system.repository.RoleRepository;
+import com.example.employee_management_system.repository.UserRepository;
+import com.example.employee_management_system.security.JwtUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+@Service
+public class AuthService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    public String register(RegisterRequest request) {
+
+        if (userRepository.existsByUsername(request.getUsername())) {
+            return "Username already exists";
+        }
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            return "Email already exists";
+        }
+
+        Role role = roleRepository.findByName(request.getRole())
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+
+        User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(role)
+                .build();
+
+        userRepository.save(user);
+
+        return "User Registered Successfully";
+    }
+
+    public AuthResponse login(LoginRequest request) {
+
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getUsername(),
+                        request.getPassword()
+                )
+        );
+
+        String token = jwtUtil.generateToken(request.getUsername());
+
+        return new AuthResponse(token);
+    }
+}
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\service\EmployeeService.java
+=============================================================
+package com.example.employee_management_system.service;
+
+import com.example.employee_management_system.dto.EmployeeDTO;
+
+import java.util.List;
+
+public interface EmployeeService {
+
+    EmployeeDTO createEmployee(EmployeeDTO employeeDTO);
+
+    List<EmployeeDTO> getAllEmployees();
+
+    EmployeeDTO getEmployeeById(Long id);
+
+    EmployeeDTO updateEmployee(Long id, EmployeeDTO employeeDTO);
+
+    void deleteEmployee(Long id);
+}
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\service\EmployeeServiceImpl.java
+=============================================================
+package com.example.employee_management_system.service;
+
+import com.example.employee_management_system.dto.EmployeeDTO;
+import com.example.employee_management_system.entity.Employee;
+import com.example.employee_management_system.exception.ResourceNotFoundException;
+import com.example.employee_management_system.repository.EmployeeRepository;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class EmployeeServiceImpl implements EmployeeService {
+
+
+    @Autowired
+    private EmployeeRepository employeeRepository;
+
+
+    // CREATE EMPLOYEE
+    @Override
+    public EmployeeDTO createEmployee(EmployeeDTO employeeDTO) {
+
+        Employee employee = Employee.builder()
+                .firstName(employeeDTO.getFirstName())
+                .lastName(employeeDTO.getLastName())
+                .employeeCode(employeeDTO.getEmployeeCode())
+                .email(employeeDTO.getEmail())
+                .phone(employeeDTO.getPhone())
+                .department(employeeDTO.getDepartment())
+                .designation(employeeDTO.getDesignation())
+                .salary(employeeDTO.getSalary())
+                .joiningDate(employeeDTO.getJoiningDate())
+                .build();
+
+
+        Employee savedEmployee = employeeRepository.save(employee);
+
+        return convertToDTO(savedEmployee);
+    }
+
+
+    // GET ALL EMPLOYEES
+    @Override
+    public List<EmployeeDTO> getAllEmployees() {
+
+        return employeeRepository.findAll()
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+
+    // GET EMPLOYEE BY ID
+    @Override
+    public EmployeeDTO getEmployeeById(Long id) {
+
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Employee not found with id: " + id
+                        ));
+
+        return convertToDTO(employee);
+    }
+
+
+    // UPDATE EMPLOYEE
+    @Override
+    public EmployeeDTO updateEmployee(Long id, EmployeeDTO dto) {
+
+
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Employee not found with id: " + id
+                        ));
+
+
+        employee.setFirstName(dto.getFirstName());
+        employee.setLastName(dto.getLastName());
+        employee.setEmail(dto.getEmail());
+        employee.setPhone(dto.getPhone());
+        employee.setDepartment(dto.getDepartment());
+        employee.setDesignation(dto.getDesignation());
+        employee.setSalary(dto.getSalary());
+        employee.setJoiningDate(dto.getJoiningDate());
+
+
+        Employee updatedEmployee = employeeRepository.save(employee);
+
+        return convertToDTO(updatedEmployee);
+    }
+
+
+
+    // DELETE EMPLOYEE
+    @Override
+    public void deleteEmployee(Long id) {
+
+
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Employee not found with id: " + id
+                        ));
+
+
+        employeeRepository.delete(employee);
+    }
+
+
+
+    // ENTITY TO DTO CONVERSION
+    private EmployeeDTO convertToDTO(Employee employee) {
+
+
+        return EmployeeDTO.builder()
+                .id(employee.getId())
+                .firstName(employee.getFirstName())
+                .lastName(employee.getLastName())
+                .employeeCode(employee.getEmployeeCode())
+                .email(employee.getEmail())
+                .phone(employee.getPhone())
+                .department(employee.getDepartment())
+                .designation(employee.getDesignation())
+                .salary(employee.getSalary())
+                .joiningDate(employee.getJoiningDate())
+                .build();
+    }
+
+}
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\repository\UserRepository.java
+=============================================================
+package com.example.employee_management_system.repository;
+
+import com.example.employee_management_system.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    Optional<User> findByUsername(String username);
+
+    Optional<User> findByEmail(String email);
+
+    boolean existsByUsername(String username);
+
+    boolean existsByEmail(String email);
+
+}
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\repository\RoleRepository.java
+=============================================================
+package com.example.employee_management_system.repository;
+
+import com.example.employee_management_system.entity.Role;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface RoleRepository extends JpaRepository<Role, Long> {
+
+    Optional<Role> findByName(String name);
+
+}
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\repository\EmployeeRepository.java
+=============================================================
+package com.example.employee_management_system.repository;
+
+import com.example.employee_management_system.entity.Employee;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+
+    Optional<Employee> findByEmployeeCode(String employeeCode);
+
+    Optional<Employee> findByEmail(String email);
+
+}
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\entity\User.java
+=============================================================
+package com.example.employee_management_system.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true)
+    private String username;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @Column(nullable = false)
+    private String password;
+
+    @ManyToOne
+    @JoinColumn(name = "role_id")
+    private Role role;
+}
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\entity\Role.java
+=============================================================
+package com.example.employee_management_system.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "roles")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Role {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true)
+    private String name;
+}
+
+=============================================================
+FILE: src\main\java\com\example\employee_management_system\entity\Employee.java
+=============================================================
+package com.example.employee_management_system.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "employees")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Employee {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String firstName;
+
+    @Column(nullable = false)
+    private String lastName;
+
+    @Column(nullable = false, unique = true)
+    private String employeeCode;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    private String phone;
+
+    private String department;
+
+    private String designation;
+
+    private BigDecimal salary;
+
+    private LocalDate joiningDate;
+
+    @OneToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+}
+
+=============================================================
+FILE: src\main\resources\application.properties
+=============================================================
+spring.application.name=employee-management-system
+
+# MySQL Configuration
+spring.datasource.url=jdbc:mysql://localhost:3306/employee_management
+spring.datasource.username=root
+spring.datasource.password=LEELA@123
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# Hibernate
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+# Server
+server.port=8080
+
+# Security Debug Logs
+logging.level.org.springframework.security=DEBUG
+logging.level.org.springframework.security.web=DEBUG
+
+=============================================================
+FILE: pom.xml
+=============================================================
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.3</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.example</groupId>
+    <artifactId>employee-management-system</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>employee-management-system</name>
+    <description>Employee Management System using Spring Boot</description>
+
+    <properties>
+        <java.version>21</java.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- Spring Boot Web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Spring Data JPA -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- Spring Security -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- Validation -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- MySQL -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- JWT -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.12.6</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.12.6</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.12.6</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- DevTools -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.38</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>
