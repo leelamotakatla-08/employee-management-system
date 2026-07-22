@@ -65,7 +65,7 @@ The application enables organizations to securely manage employees, departments,
 | ORM | Spring Data JPA + Hibernate |
 | Documentation | Swagger / OpenAPI |
 | Build Tool | Maven |
-| Testing | Postman, Swagger UI |
+| Testing | Swagger UI & Postman |
 
 ---
 
@@ -89,7 +89,7 @@ Automatically generated request and response models using OpenAPI.
 
 ## 🔹 JWT Authentication
 
-![JWT Authentication](images/swagger-jwt-authentication.png)
+![JWT Authentication](images/jwt-authentication.png)
 
 Authenticate secured APIs directly from Swagger using a Bearer Token.
 
@@ -97,7 +97,7 @@ Authenticate secured APIs directly from Swagger using a Bearer Token.
 
 ## 🔹 Dashboard & Authentication APIs
 
-![Dashboard APIs](images/swagger-dashboard-auth.png)
+![Dashboard APIs](images/dashboard-api.png)
 
 Dashboard analytics and authentication endpoints.
 
@@ -105,7 +105,7 @@ Dashboard analytics and authentication endpoints.
 
 ## 🔹 API Testing using Postman
 
-![Postman](images/postman-login-success.png)
+![Postman](images/postman-authentication.png)
 
 Successful login and JWT token generation tested using Postman.
 
@@ -130,10 +130,12 @@ Successful login and JWT token generation tested using Postman.
 ## Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/employee-management-system.git
+git clone https://github.com/leelamotakatla-08/employee-management-system.git
 
 cd employee-management-system
 ```
+
+---
 
 ## Create the Database
 
@@ -141,19 +143,41 @@ cd employee-management-system
 CREATE DATABASE employee_management;
 ```
 
+---
+
 ## Configure the Database
 
-Update your MySQL credentials in **application.properties**.
+Update your MySQL credentials in:
 
-## Build & Run
+```properties
+src/main/resources/application.properties
+```
+
+Example:
+
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/employee_management
+spring.datasource.username=root
+spring.datasource.password=your_password
+```
+
+---
+
+## Build the Project
 
 ```bash
 ./mvnw clean install
+```
 
+---
+
+## Run the Application
+
+```bash
 ./mvnw spring-boot:run
 ```
 
-Application runs at:
+The application will start on:
 
 ```
 http://localhost:8080
@@ -163,7 +187,7 @@ http://localhost:8080
 
 # 📚 Swagger Documentation
 
-Open the following URL after starting the application:
+After starting the application, open:
 
 ```
 http://localhost:8080/swagger-ui/index.html
@@ -178,12 +202,54 @@ Swagger provides:
 
 ---
 
+# 🔐 Authentication
+
+This project uses **JWT (JSON Web Token)** authentication.
+
+### Authentication Flow
+
+1. Register a new user.
+2. Login using registered credentials.
+3. Receive a JWT token.
+4. Click the **Authorize** button in Swagger UI.
+5. Enter:
+
+```
+Bearer <your_jwt_token>
+```
+
+6. Access secured APIs.
+
+---
+
+# 📁 Project Structure
+
+```
+src
+├── controller
+├── service
+│   └── impl
+├── repository
+├── entity
+├── dto
+├── mapper
+├── config
+├── security
+├── exception
+└── EmployeeManagementSystemApplication.java
+```
+
+---
+
 # 🚀 Future Enhancements
 
 - Docker Containerization
 - React Frontend
 - AWS Deployment
 - CI/CD using GitHub Actions
+- Unit & Integration Testing
+- Email Notifications
+- File Upload for Employee Profiles
 
 ---
 
@@ -191,12 +257,16 @@ Swagger provides:
 
 **Motakatla Leela Vardhini**
 
-B.Tech – Computer Science & Engineering
+🎓 B.Tech – Computer Science & Engineering
 
-Aspiring Software Development Engineer
+💻 Aspiring Java Full Stack Developer
+
+🌱 Passionate about Spring Boot, REST APIs, and Backend Development
 
 ---
 
 # ⭐ Support
 
-If you found this project useful, consider giving it a ⭐ **Star** on GitHub.
+If you found this project useful, please consider giving it a ⭐ on GitHub.
+
+It helps others discover the project and motivates future improvements.
