@@ -6,245 +6,155 @@ import com.example.employee_management_system.entity.Employee;
 import com.example.employee_management_system.entity.User;
 import com.example.employee_management_system.exception.DuplicateResourceException;
 import com.example.employee_management_system.exception.ResourceNotFoundException;
+import com.example.employee_management_system.mapper.EmployeeMapper;
 import com.example.employee_management_system.repository.DepartmentRepository;
 import com.example.employee_management_system.repository.EmployeeRepository;
 import com.example.employee_management_system.repository.UserRepository;
 import com.example.employee_management_system.service.EmployeeService;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
+@Transactional
 public class EmployeeServiceImpl implements EmployeeService {
 
-    @Autowired
-    private EmployeeRepository employeeRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private DepartmentRepository departmentRepository;
-
+    private final EmployeeRepository employeeRepository;
+    private final UserRepository userRepository;
+    private final DepartmentRepository departmentRepository;
 
     @Override
     public EmployeeDTO createEmployee(EmployeeDTO dto) {
 
-        // Check duplicate employee email
-        if (employeeRepository.findByEmail(dto.getEmail()).isPresent()) {
+        validateDuplicateEmployee(dto);
 
-            throw new DuplicateResourceException(
-                    "Employee email already exists"
-            );
-        }
+        Department department = findDepartment(dto.getDepartment());
 
+        User user = userRepository
+                .findByEmail(dto.getEmail())
+                .orElse(null);
 
-        // Check duplicate employee code
-        if (employeeRepository.findByEmployeeCode(dto.getEmployeeCode()).isPresent()) {
+        Employee employee = EmployeeMapper.mapToEntity(dto, department, user);
 
-            throw new DuplicateResourceException(
-                    "Employee code already exists"
-            );
-        }
+        Employee savedEmployee = employeeRepository.save(employee);
 
-
-        Department department =
-                departmentRepository
-                        .findByDepartmentName(dto.getDepartment())
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Department not found"
-                                )
-                        );
-
-
-        // User is optional
-        User user =
-                userRepository
-                        .findByEmail(dto.getEmail())
-                        .orElse(null);
-
-
-        Employee employee = Employee.builder()
-                .firstName(dto.getFirstName())
-                .lastName(dto.getLastName())
-                .employeeCode(dto.getEmployeeCode())
-                .email(dto.getEmail())
-                .phone(dto.getPhone())
-                .department(department)
-                .designation(dto.getDesignation())
-                .salary(dto.getSalary())
-                .joiningDate(dto.getJoiningDate())
-                .user(user)
-                .build();
-
-
-        return convertToDTO(
-                employeeRepository.save(employee)
-        );
+        return EmployeeMapper.mapToDTO(savedEmployee);
     }
 
-
-
     @Override
+    @Transactional(readOnly = true)
     public List<EmployeeDTO> getAllEmployees() {
 
         return employeeRepository.findAll()
                 .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-
+                .map(EmployeeMapper::mapToDTO)
+                .toList();
     }
-
-
 
     @Override
+    @Transactional(readOnly = true)
     public EmployeeDTO getEmployeeById(Long id) {
 
-
-        Employee employee =
-                employeeRepository.findById(id)
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Employee not found with id: " + id
-                                )
-                        );
-
-
-        return convertToDTO(employee);
-
+        return EmployeeMapper.mapToDTO(findEmployee(id));
     }
-
-
 
     @Override
     public EmployeeDTO updateEmployee(Long id, EmployeeDTO dto) {
 
+        Employee employee = findEmployee(id);
 
-        Employee employee =
-                employeeRepository.findById(id)
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Employee not found with id: " + id
-                                )
-                        );
+        employeeRepository.findByEmail(dto.getEmail())
+                .filter(e -> !e.getId().equals(id))
+                .ifPresent(e -> {
+                    throw new DuplicateResourceException(
+                            "Employee email already exists."
+                    );
+                });
 
+        Department department = findDepartment(dto.getDepartment());
 
-        Department department =
-                departmentRepository
-                        .findByDepartmentName(dto.getDepartment())
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Department not found"
-                                )
-                        );
+        EmployeeMapper.updateEntity(employee, dto, department);
 
+        Employee updatedEmployee = employeeRepository.save(employee);
 
-        employee.setFirstName(dto.getFirstName());
-        employee.setLastName(dto.getLastName());
-        employee.setEmail(dto.getEmail());
-        employee.setPhone(dto.getPhone());
-        employee.setDepartment(department);
-        employee.setDesignation(dto.getDesignation());
-        employee.setSalary(dto.getSalary());
-        employee.setJoiningDate(dto.getJoiningDate());
-
-
-        return convertToDTO(
-                employeeRepository.save(employee)
-        );
-
+        return EmployeeMapper.mapToDTO(updatedEmployee);
     }
-
-
 
     @Override
     public void deleteEmployee(Long id) {
 
-
-        Employee employee =
-                employeeRepository.findById(id)
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Employee not found with id: " + id
-                                )
-                        );
-
-
-        employeeRepository.delete(employee);
-
+        employeeRepository.delete(findEmployee(id));
     }
 
-
-
     @Override
+    @Transactional(readOnly = true)
     public EmployeeDTO getMyProfile(String username) {
 
+        Employee employee = employeeRepository.findByUserUsername(username)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Employee profile not found for user: " + username
+                        ));
 
-        Employee employee =
-                employeeRepository.findByUserUsername(username)
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Employee profile not found"
-                                )
-                        );
-
-
-        return convertToDTO(employee);
-
+        return EmployeeMapper.mapToDTO(employee);
     }
 
-
-
     @Override
-    public EmployeeDTO updateMyProfile(
-            String username,
-            EmployeeDTO dto) {
+    public EmployeeDTO updateMyProfile(String username, EmployeeDTO dto) {
 
-
-        Employee employee =
-                employeeRepository.findByUserUsername(username)
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Employee profile not found"
-                                )
-                        );
-
+        Employee employee = employeeRepository.findByUserUsername(username)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Employee profile not found for user: " + username
+                        ));
 
         employee.setPhone(dto.getPhone());
         employee.setDesignation(dto.getDesignation());
 
+        Employee updatedEmployee = employeeRepository.save(employee);
 
-        return convertToDTO(
-                employeeRepository.save(employee)
-        );
-
+        return EmployeeMapper.mapToDTO(updatedEmployee);
     }
 
+    // =====================================================
+    // Helper Methods
+    // =====================================================
 
+    private Employee findEmployee(Long id) {
 
-    private EmployeeDTO convertToDTO(Employee employee) {
-
-
-        return EmployeeDTO.builder()
-                .id(employee.getId())
-                .firstName(employee.getFirstName())
-                .lastName(employee.getLastName())
-                .employeeCode(employee.getEmployeeCode())
-                .email(employee.getEmail())
-                .phone(employee.getPhone())
-                .department(
-                        employee.getDepartment()
-                                .getDepartmentName()
-                )
-                .designation(employee.getDesignation())
-                .salary(employee.getSalary())
-                .joiningDate(employee.getJoiningDate())
-                .build();
-
+        return employeeRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Employee not found with ID: " + id
+                        ));
     }
 
+    private Department findDepartment(String departmentName) {
+
+        return departmentRepository.findByDepartmentName(departmentName)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Department '" + departmentName + "' not found."
+                        ));
+    }
+
+    private void validateDuplicateEmployee(EmployeeDTO dto) {
+
+        if (employeeRepository.findByEmail(dto.getEmail()).isPresent()) {
+            throw new DuplicateResourceException(
+                    "Employee email already exists."
+            );
+        }
+
+        if (employeeRepository.findByEmployeeCode(dto.getEmployeeCode()).isPresent()) {
+            throw new DuplicateResourceException(
+                    "Employee code already exists."
+            );
+        }
+    }
 }

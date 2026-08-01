@@ -3,16 +3,22 @@ package com.example.employee_management_system.service.impl;
 import com.example.employee_management_system.dto.DepartmentRequest;
 import com.example.employee_management_system.dto.DepartmentResponse;
 import com.example.employee_management_system.entity.Department;
+import com.example.employee_management_system.exception.DuplicateResourceException;
 import com.example.employee_management_system.exception.ResourceNotFoundException;
+import com.example.employee_management_system.mapper.DepartmentMapper;
 import com.example.employee_management_system.repository.DepartmentRepository;
 import com.example.employee_management_system.service.DepartmentService;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class DepartmentServiceImpl implements DepartmentService {
 
     private final DepartmentRepository departmentRepository;
@@ -20,69 +26,83 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Override
     public DepartmentResponse createDepartment(DepartmentRequest request) {
 
-        Department department = Department.builder()
-                .departmentName(request.getDepartmentName())
-                .departmentCode(request.getDepartmentCode())
-                .description(request.getDescription())
-                .build();
+        validateDuplicateDepartment(request);
+
+        Department department = DepartmentMapper.mapToEntity(request);
 
         Department savedDepartment = departmentRepository.save(department);
 
-        return mapToResponse(savedDepartment);
+        return DepartmentMapper.mapToResponse(savedDepartment);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<DepartmentResponse> getAllDepartments() {
 
         return departmentRepository.findAll()
                 .stream()
-                .map(this::mapToResponse)
+                .map(DepartmentMapper::mapToResponse)
                 .toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public DepartmentResponse getDepartmentById(Long id) {
 
-        Department department = departmentRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Department not found with id: " + id));
-
-        return mapToResponse(department);
+        return DepartmentMapper.mapToResponse(findDepartment(id));
     }
 
     @Override
     public DepartmentResponse updateDepartment(Long id, DepartmentRequest request) {
 
-        Department department = departmentRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Department not found with id: " + id));
+        Department department = findDepartment(id);
 
-        department.setDepartmentName(request.getDepartmentName());
-        department.setDepartmentCode(request.getDepartmentCode());
-        department.setDescription(request.getDescription());
+        departmentRepository.findByDepartmentName(request.getDepartmentName())
+                .filter(d -> !d.getId().equals(id))
+                .ifPresent(d -> {
+                    throw new DuplicateResourceException(
+                            "Department name already exists."
+                    );
+                });
+
+        DepartmentMapper.updateEntity(department, request);
 
         Department updatedDepartment = departmentRepository.save(department);
 
-        return mapToResponse(updatedDepartment);
+        return DepartmentMapper.mapToResponse(updatedDepartment);
     }
 
     @Override
     public void deleteDepartment(Long id) {
 
-        Department department = departmentRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Department not found with id: " + id));
-
-        departmentRepository.delete(department);
+        departmentRepository.delete(findDepartment(id));
     }
 
-    private DepartmentResponse mapToResponse(Department department) {
+    // =====================================================
+    // Helper Methods
+    // =====================================================
 
-        return DepartmentResponse.builder()
-                .id(department.getId())
-                .departmentName(department.getDepartmentName())
-                .departmentCode(department.getDepartmentCode())
-                .description(department.getDescription())
-                .build();
+    private Department findDepartment(Long id) {
+
+        return departmentRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Department not found with id: " + id
+                        ));
+    }
+
+    private void validateDuplicateDepartment(DepartmentRequest request) {
+
+        if (departmentRepository.findByDepartmentName(request.getDepartmentName()).isPresent()) {
+            throw new DuplicateResourceException(
+                    "Department name already exists."
+            );
+        }
+
+        if (departmentRepository.findByDepartmentCode(request.getDepartmentCode()).isPresent()) {
+            throw new DuplicateResourceException(
+                    "Department code already exists."
+            );
+        }
     }
 }

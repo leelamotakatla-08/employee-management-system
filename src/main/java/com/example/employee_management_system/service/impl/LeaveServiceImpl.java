@@ -13,25 +13,23 @@ import com.example.employee_management_system.service.LeaveService;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class LeaveServiceImpl implements LeaveService {
-
 
     private final LeaveRepository leaveRepository;
 
     private final EmployeeRepository employeeRepository;
 
-
     @Override
     public LeaveDTO createLeave(LeaveDTO dto) {
 
-        Employee employee = employeeRepository.findById(dto.getEmployeeId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Employee not found"));
+        Employee employee = findEmployee(dto.getEmployeeId());
 
         Leave leave = LeaveMapper.mapToEntity(dto, employee);
 
@@ -39,13 +37,13 @@ public class LeaveServiceImpl implements LeaveService {
             leave.setStatus(LeaveStatus.PENDING);
         }
 
-        return LeaveMapper.mapToDto(
-                leaveRepository.save(leave)
-        );
+        Leave savedLeave = leaveRepository.save(leave);
+
+        return LeaveMapper.mapToDto(savedLeave);
     }
 
-
     @Override
+    @Transactional(readOnly = true)
     public List<LeaveDTO> getAllLeaves() {
 
         return leaveRepository.findAll()
@@ -54,78 +52,77 @@ public class LeaveServiceImpl implements LeaveService {
                 .toList();
     }
 
-
     @Override
+    @Transactional(readOnly = true)
     public LeaveDTO getLeaveById(Long id) {
 
-        Leave leave = leaveRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Leave not found"));
-
-        return LeaveMapper.mapToDto(leave);
+        return LeaveMapper.mapToDto(findLeave(id));
     }
-
 
     @Override
     public LeaveDTO updateLeave(Long id, LeaveDTO dto) {
 
-        Leave leave = leaveRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Leave not found"));
-
+        Leave leave = findLeave(id);
 
         leave.setLeaveType(dto.getLeaveType());
         leave.setStartDate(dto.getStartDate());
         leave.setEndDate(dto.getEndDate());
         leave.setReason(dto.getReason());
 
+        Leave updatedLeave = leaveRepository.save(leave);
 
-        return LeaveMapper.mapToDto(
-                leaveRepository.save(leave)
-        );
+        return LeaveMapper.mapToDto(updatedLeave);
     }
-
 
     @Override
     public void deleteLeave(Long id) {
 
-        Leave leave = leaveRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Leave not found"));
-
-        leaveRepository.delete(leave);
+        leaveRepository.delete(findLeave(id));
     }
-
 
     @Override
     public LeaveDTO approveLeave(Long id) {
 
-        Leave leave = leaveRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Leave not found"));
+        Leave leave = findLeave(id);
 
         leave.setStatus(LeaveStatus.APPROVED);
 
+        Leave updatedLeave = leaveRepository.save(leave);
 
-        return LeaveMapper.mapToDto(
-                leaveRepository.save(leave)
-        );
+        return LeaveMapper.mapToDto(updatedLeave);
     }
-
 
     @Override
     public LeaveDTO rejectLeave(Long id) {
 
-        Leave leave = leaveRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Leave not found"));
+        Leave leave = findLeave(id);
 
         leave.setStatus(LeaveStatus.REJECTED);
 
+        Leave updatedLeave = leaveRepository.save(leave);
 
-        return LeaveMapper.mapToDto(
-                leaveRepository.save(leave)
-        );
+        return LeaveMapper.mapToDto(updatedLeave);
     }
 
+    // =====================================================
+    // Helper Methods
+    // =====================================================
+
+    private Leave findLeave(Long id) {
+
+        return leaveRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Leave not found with id: " + id
+                        ));
+    }
+
+    private Employee findEmployee(Long employeeId) {
+
+        return employeeRepository.findById(employeeId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Employee not found with id: " + employeeId
+                        ));
+    }
 }

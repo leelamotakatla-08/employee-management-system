@@ -4,27 +4,64 @@ import com.example.employee_management_system.dto.EmployeeDTO;
 
 import java.util.List;
 
+/**
+ * Service interface for Employee Management.
+ */
 public interface EmployeeService {
 
-    // CREATE EMPLOYEE
+    /**
+     * Create a new employee.
+     *
+     * @param employeeDTO employee details
+     * @return created employee
+     */
     EmployeeDTO createEmployee(EmployeeDTO employeeDTO);
 
-    // GET ALL EMPLOYEES
+    /**
+     * Retrieve all employees.
+     *
+     * @return list of employees
+     */
     List<EmployeeDTO> getAllEmployees();
 
-    // GET EMPLOYEE BY ID
+    /**
+     * Retrieve an employee by ID.
+     *
+     * @param id employee ID
+     * @return employee details
+     */
     EmployeeDTO getEmployeeById(Long id);
 
-    // UPDATE EMPLOYEE
+    /**
+     * Update employee details.
+     *
+     * @param id employee ID
+     * @param employeeDTO updated employee details
+     * @return updated employee
+     */
     EmployeeDTO updateEmployee(Long id, EmployeeDTO employeeDTO);
 
-    // DELETE EMPLOYEE
+    /**
+     * Delete an employee.
+     *
+     * @param id employee ID
+     */
     void deleteEmployee(Long id);
 
-    // GET LOGGED-IN EMPLOYEE PROFILE
+    /**
+     * Get the profile of the currently logged-in employee.
+     *
+     * @param username authenticated username
+     * @return employee profile
+     */
     EmployeeDTO getMyProfile(String username);
 
-    // UPDATE LOGGED-IN EMPLOYEE PROFILE
+    /**
+     * Update the profile of the currently logged-in employee.
+     *
+     * @param username authenticated username
+     * @param employeeDTO updated profile
+     * @return updated employee profile
+     */
     EmployeeDTO updateMyProfile(String username, EmployeeDTO employeeDTO);
-
 }

@@ -2,6 +2,8 @@ package com.example.employee_management_system.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,128 +18,118 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-
-    // Handle Resource Not Found Exception
+    /**
+     * Resource Not Found Exception
+     */
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFound(
             ResourceNotFoundException ex,
             HttpServletRequest request) {
 
+        log.warn("Resource not found: {}", ex.getMessage());
 
-        ErrorResponse errorResponse = new ErrorResponse(
+        ErrorResponse response = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.NOT_FOUND.value(),
                 ex.getMessage(),
                 request.getRequestURI()
         );
 
-
-        return new ResponseEntity<>(
-                errorResponse,
-                HttpStatus.NOT_FOUND
-        );
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(response);
     }
 
-
-
-    // Handle Duplicate Resource Exception
+    /**
+     * Duplicate Resource Exception
+     */
     @ExceptionHandler(DuplicateResourceException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateResource(
             DuplicateResourceException ex,
             HttpServletRequest request) {
 
+        log.warn("Duplicate resource: {}", ex.getMessage());
 
-        ErrorResponse errorResponse = new ErrorResponse(
+        ErrorResponse response = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.CONFLICT.value(),
                 ex.getMessage(),
                 request.getRequestURI()
         );
 
-
-        return new ResponseEntity<>(
-                errorResponse,
-                HttpStatus.CONFLICT
-        );
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(response);
     }
 
-
-
-    // Handle Validation Errors
+    /**
+     * Validation Errors
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationErrors(
             MethodArgumentNotValidException ex) {
 
-
         Map<String, String> errors = new HashMap<>();
 
+        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
+            errors.put(
+                    error.getField(),
+                    error.getDefaultMessage()
+            );
+        }
 
-        ex.getBindingResult()
-                .getFieldErrors()
-                .forEach((FieldError error) -> {
+        log.warn("Validation failed: {}", errors);
 
-                    errors.put(
-                            error.getField(),
-                            error.getDefaultMessage()
-                    );
-
-                });
-
-
-        return new ResponseEntity<>(
-                errors,
-                HttpStatus.BAD_REQUEST
-        );
+        return ResponseEntity
+                .badRequest()
+                .body(errors);
     }
 
-
-
-    // Handle Database Constraint Errors
+    /**
+     * Database Constraint Errors
+     */
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ErrorResponse> handleDatabaseErrors(
+    public ResponseEntity<ErrorResponse> handleDatabaseException(
             DataIntegrityViolationException ex,
             HttpServletRequest request) {
 
+        log.error("Database constraint violation", ex);
 
-        ErrorResponse errorResponse = new ErrorResponse(
+        ErrorResponse response = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.CONFLICT.value(),
-                "Duplicate or invalid data entered",
+                "Duplicate or invalid data entered.",
                 request.getRequestURI()
         );
 
-
-        return new ResponseEntity<>(
-                errorResponse,
-                HttpStatus.CONFLICT
-        );
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(response);
     }
 
-
-
-    // Handle All Other Exceptions
+    /**
+     * Any Unhandled Exception
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(
             Exception ex,
             HttpServletRequest request) {
 
+        log.error("Unexpected exception occurred", ex);
 
-        ErrorResponse errorResponse = new ErrorResponse(
+        ErrorResponse response = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                ex.getMessage(),
+                "An unexpected error occurred. Please contact the administrator.",
                 request.getRequestURI()
         );
 
-
-        return new ResponseEntity<>(
-                errorResponse,
-                HttpStatus.INTERNAL_SERVER_ERROR
-        );
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(response);
     }
-
 }
