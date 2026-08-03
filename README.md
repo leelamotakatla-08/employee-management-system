@@ -8,33 +8,31 @@
 ![Maven](https://img.shields.io/badge/Build-Maven-red)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-A production-ready **Employee Management System REST API** built using **Java 21, Spring Boot 3, Spring Security (JWT), Hibernate, MySQL, and Swagger/OpenAPI**.
+Production-ready **Employee Management System REST API** built with **Java 21, Spring Boot 3, Spring Security (JWT), Hibernate, MySQL, and Swagger/OpenAPI**.
 
-The application provides secure REST APIs for managing employees, departments, attendance, leave requests, payroll, and dashboard analytics using **JWT Authentication** and **Role-Based Access Control (RBAC)**. It is deployed on **Railway** and can be explored through the hosted **Swagger UI**.
+The application provides secure REST APIs for managing employees, departments, attendance, leave, payroll, and dashboard analytics using **JWT Authentication** and **Role-Based Access Control (RBAC)**. It is deployed on **Railway** with an interactive **Swagger UI** for live API testing.
 
 ---
 
-## 🚀 Live Demo
+## 🌐 Live Demo
 
-### 🌐 Railway Deployment (Swagger UI)
+🚆 **Railway Deployment**
 
-🔗 **Live Swagger UI**
+**🔗 Live Swagger UI**
 
 https://employee-management-system-production-5028.up.railway.app/swagger-ui/index.html
 
-📂 **GitHub Repository**
-
-https://github.com/leelamotakatla-08/employee-management-system
-
-> Recruiters can explore and test the deployed REST APIs directly from the browser without any local setup.
+> Explore and test the deployed REST APIs directly from your browser.
 
 ---
 
 ## ✨ Features
 
-- 🔐 JWT Authentication & Role-Based Authorization
-- 👥 Employee & Department Management (CRUD)
-- 📅 Attendance & Leave Management
+- 🔐 JWT Authentication & RBAC
+- 👥 Employee CRUD
+- 🏢 Department CRUD
+- 📅 Attendance Tracking
+- 🌴 Leave Management
 - 💰 Payroll Management
 - 📊 Dashboard Analytics
 - 🔒 BCrypt Password Encryption
@@ -59,6 +57,20 @@ https://github.com/leelamotakatla-08/employee-management-system
 
 ---
 
+## 📊 Project Metrics
+
+| Metric | Value |
+|---------|------:|
+| Business Modules | 7 |
+| Controllers | 8 |
+| Entities | 10 |
+| Repository Interfaces | 8 |
+| Java Classes | 68+ |
+| Authentication | JWT |
+| Deployment | Railway |
+
+---
+
 ## 🏗 Architecture
 
 ```text
@@ -68,33 +80,33 @@ Swagger UI / Postman
    │
 Spring Security (JWT)
    │
-Controllers
+Controller
    │
-Services
+Service
    │
-Repositories
+Repository
    │
-MySQL Database
+MySQL
 ```
 
 ---
 
 ## 🚀 Getting Started
 
-Clone the repository:
+Clone the repository
 
 ```bash
 git clone https://github.com/leelamotakatla-08/employee-management-system.git
 cd employee-management-system
 ```
 
-Create the database:
+Create the database
 
 ```sql
 CREATE DATABASE employee_management;
 ```
 
-Configure environment variables:
+Configure environment variables
 
 ```properties
 SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/employee_management
@@ -104,14 +116,14 @@ JWT_SECRET=your_secure_secret_key
 JWT_EXPIRATION=86400000
 ```
 
-Build and run:
+Build and run
 
 ```bash
 ./mvnw clean install
 ./mvnw spring-boot:run
 ```
 
-Open Swagger locally:
+Local Swagger
 
 ```text
 http://localhost:8080/swagger-ui/index.html
@@ -121,39 +133,32 @@ http://localhost:8080/swagger-ui/index.html
 
 ## 📸 Screenshots
 
-### Swagger UI
+| Swagger UI | API Schemas |
+|------------|-------------|
+| ![](images/swagger-home.png) | ![](images/swagger-schemas.png) |
 
-![](images/swagger-home.png)
+| JWT Authentication | Dashboard APIs |
+|--------------------|----------------|
+| ![](images/jwt-authentication.png) | ![](images/dashboard-api.png) |
 
-### API Schemas
-
-![](images/swagger-schemas.png)
-
-### JWT Authentication
-
-![](images/jwt-authentication.png)
-
-### Dashboard APIs
-
-![](images/dashboard-api.png)
-
-### Postman Testing
-
-![](images/postman-authentication.png)
+| Postman Testing |
+|-----------------|
+| ![](images/postman-authentication.png) |
 
 ---
 
 ## 💡 Skills Demonstrated
 
-- Spring Boot & REST API Development
-- Spring Security with JWT Authentication
+- Java 21
+- Spring Boot
+- Spring Security (JWT)
+- REST API Development
 - Spring Data JPA & Hibernate
-- MySQL Database Integration
-- Layered Architecture & DTO Pattern
+- MySQL
 - Bean Validation & Exception Handling
-- Swagger/OpenAPI Documentation
-- Git & GitHub Version Control
-- Railway Cloud Deployment
+- Swagger/OpenAPI
+- Git & GitHub
+- Railway Deployment
 
 ---
 
@@ -161,7 +166,8 @@ http://localhost:8080/swagger-ui/index.html
 
 **Motakatla Leela Vardhini**
 
-🎓 B.Tech – Computer Science & Engineering  
+🎓 B.Tech – Computer Science & Engineering
+
 💻 Aspiring Software Developer
 
 ---
