@@ -10,7 +10,7 @@
 
 Production-ready **Employee Management System REST API** built with **Java 21, Spring Boot 3, Spring Security (JWT), Hibernate, MySQL, and Swagger/OpenAPI**.
 
-The application provides secure REST APIs for managing employees, departments, attendance, leave, payroll, and dashboard analytics using **JWT Authentication** and **Role-Based Access Control (RBAC)**. It is deployed on **Railway** with an interactive **Swagger UI** for live API testing.
+Securely manages employees, departments, attendance, leave, payroll, and dashboard analytics through RESTful APIs with **JWT Authentication**, **Role-Based Access Control (RBAC)**, and a **live Railway deployment** featuring interactive **Swagger UI**.
 
 ---
 
@@ -57,20 +57,6 @@ https://employee-management-system-production-5028.up.railway.app/swagger-ui/ind
 
 ---
 
-## 📊 Project Metrics
-
-| Metric | Value |
-|---------|------:|
-| Business Modules | 7 |
-| Controllers | 8 |
-| Entities | 10 |
-| Repository Interfaces | 8 |
-| Java Classes | 68+ |
-| Authentication | JWT |
-| Deployment | Railway |
-
----
-
 ## 🏗 Architecture
 
 ```text
@@ -106,7 +92,7 @@ Create the database
 CREATE DATABASE employee_management;
 ```
 
-Configure environment variables
+Configure environment variablesW
 
 ```properties
 SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/employee_management
