@@ -1,59 +1,41 @@
 # 🚀 Employee Management System
 
-![Java](https://img.shields.io/badge/Java-21-orange)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen)
-![Spring Security](https://img.shields.io/badge/Security-JWT-success)
-![MySQL](https://img.shields.io/badge/Database-MySQL-blue)
-![Swagger](https://img.shields.io/badge/API-Swagger-green)
-![Maven](https://img.shields.io/badge/Build-Maven-red)
-![License](https://img.shields.io/badge/License-MIT-lightgrey)
+# 🚀 Employee Management System
 
-Production-ready **Employee Management System REST API** built with **Java 21, Spring Boot 3, Spring Security (JWT), Hibernate, MySQL, and Swagger/OpenAPI**.
+A **backend REST API for employee management** developed using **Java 21 and Spring Boot 3**, with **Spring Security, JWT authentication, Spring Data JPA, Hibernate, and MySQL**.
 
-Securely manages employees, departments, attendance, leave, payroll, and dashboard analytics through RESTful APIs with **JWT Authentication**, **Role-Based Access Control (RBAC)**, and a **live Railway deployment** featuring interactive **Swagger UI**.
-
----
-
-## 🌐 Live Demo
-
-🚆 **Railway Deployment**
-
-**🔗 Live Swagger UI**
-
-https://employee-management-system-production-5028.up.railway.app/swagger-ui/index.html
-
-> Explore and test the deployed REST APIs directly from your browser.
+The system provides secure and structured APIs for managing **employees, departments, attendance, leave, payroll, and dashboard analytics**. It implements **role-based access control (RBAC), BCrypt password encryption, Bean Validation, global exception handling, and Swagger/OpenAPI documentation**, following a **layered Controller–Service–Repository architecture**.
 
 ---
 
 ## ✨ Features
 
-- 🔐 JWT Authentication & RBAC
-- 👥 Employee CRUD
-- 🏢 Department CRUD
-- 📅 Attendance Tracking
-- 🌴 Leave Management
-- 💰 Payroll Management
-- 📊 Dashboard Analytics
-- 🔒 BCrypt Password Encryption
-- ✅ Bean Validation & Global Exception Handling
-- 📖 Interactive Swagger/OpenAPI Documentation
-- 🧱 Layered Architecture (Controller → Service → Repository)
+* 🔐 JWT Authentication & RBAC
+* 👥 Employee CRUD
+* 🏢 Department CRUD
+* 📅 Attendance Tracking
+* 🌴 Leave Management
+* 💰 Payroll Management
+* 📊 Dashboard Analytics
+* 🔒 BCrypt Password Encryption
+* ✅ Bean Validation & Global Exception Handling
+* 📖 Interactive Swagger/OpenAPI Documentation
+* 🧱 Layered Architecture (Controller → Service → Repository)
 
 ---
 
 ## 🛠 Tech Stack
 
-| Category | Technology |
-|-----------|------------|
-| Language | Java 21 |
-| Framework | Spring Boot 3 |
-| Security | Spring Security + JWT |
-| Database | MySQL |
-| ORM | Spring Data JPA + Hibernate |
-| Documentation | Swagger / OpenAPI |
-| Build Tool | Maven |
-| Testing | Swagger UI & Postman |
+| Category      | Technology                  |
+| ------------- | --------------------------- |
+| Language      | Java 21                     |
+| Framework     | Spring Boot 3               |
+| Security      | Spring Security + JWT       |
+| Database      | MySQL                       |
+| ORM           | Spring Data JPA + Hibernate |
+| Documentation | Swagger / OpenAPI           |
+| Build Tool    | Maven                       |
+| Testing       | Swagger UI & Postman        |
 
 ---
 
@@ -79,20 +61,20 @@ MySQL
 
 ## 🚀 Getting Started
 
-Clone the repository
+### Clone the repository
 
 ```bash
 git clone https://github.com/leelamotakatla-08/employee-management-system.git
 cd employee-management-system
 ```
 
-Create the database
+### Create the database
 
 ```sql
 CREATE DATABASE employee_management;
 ```
 
-Configure environment variablesW
+### Configure environment variables
 
 ```properties
 SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/employee_management
@@ -102,14 +84,14 @@ JWT_SECRET=your_secure_secret_key
 JWT_EXPIRATION=86400000
 ```
 
-Build and run
+### Build and run
 
 ```bash
 ./mvnw clean install
 ./mvnw spring-boot:run
 ```
 
-Local Swagger
+### Local Swagger
 
 ```text
 http://localhost:8080/swagger-ui/index.html
@@ -130,21 +112,19 @@ http://localhost:8080/swagger-ui/index.html
 | Postman Testing |
 |-----------------|
 | ![](images/postman-authentication.png) |
-
 ---
 
 ## 💡 Skills Demonstrated
 
-- Java 21
-- Spring Boot
-- Spring Security (JWT)
-- REST API Development
-- Spring Data JPA & Hibernate
-- MySQL
-- Bean Validation & Exception Handling
-- Swagger/OpenAPI
-- Git & GitHub
-- Railway Deployment
+* Java 21
+* Spring Boot
+* Spring Security (JWT)
+* REST API Development
+* Spring Data JPA & Hibernate
+* MySQL
+* Bean Validation & Exception Handling
+* Swagger/OpenAPI
+* Git & GitHub
 
 ---
 
